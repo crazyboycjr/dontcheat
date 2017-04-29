@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Don't Cheat</title>
+	</head>
+	<body>
+		<h1 id="level" align="center"></h1>
+		<div id="content">
+			<canvas id="panel" width="800" height="800"></canvas>
+		</div>
+		<script>
+			const baseurl = 'http://localhost:47628';
+			let game_log = [];
+
+			function set_level(lv, log) {
+				let d = document.getElementById('level');
+				d.innerHTML = 'Level ' + lv;
+				log.lv = lv;
+			}
+
+			function rand(n) {
+				return Math.floor(Math.random() * n);
+			}
+
+			function random_color() {
+				let r = rand(256);
+				let g = rand(256);
+				let b = rand(256);
+				return `rgb(${r}, ${g}, ${b})`;
+			}
+
+			function change_color(color) {
+				let [r, g, b] = color.substring(4, color.length - 1)
+								.split(',').map(Number);
+				let off = rand(10) + 10;
+				return `rgb(${r + off}, ${g + off}, ${b + off})`;
+			}
+
+			function http_get(url) {
+				let text;
+				let xhr = new XMLHttpRequest();
+				xhr.open('GET', url, false);
+				xhr.send();
+				if (xhr.status === 200) {
+					text = xhr.responseText;
+					return JSON.parse(text);
+				} else {
+					alert(xhr.status + xhr.statusText);
+					return '';
+				}
+			}
+
+			function http_post(url, postdata) {
+				let text;
+				let xhr = new XMLHttpRequest();
+				xhr.open('POST', url, false);
+				xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+				xhr.send(JSON.stringify(postdata));
+				if (xhr.status === 200) {
+					text = xhr.responseText;
+					return JSON.parse(text);
+				} else {
+					alert(xhr.status + xhr.statusText);
+					return '';
+				}
+			}
+
+			const panel_len = 800;
+			function fill(ctx, color, n, log) {
+				let x, y;
+				let len = 750 / n;
+				let off = (panel_len - len * n) / (n + 1);
+				ctx.clearRect(0, 0, panel_len, panel_len);
+				ctx.fillStyle = '#ccc';
+				ctx.fillRect(0, 0, panel_len, panel_len);
+				ctx.fillStyle = color;
+				for (let i = 0; i < n; i++)
+					for (let j = 0; j < n; j++) {
+						x = i * (len + off) + off;
+						y = j * (len + off) + off;
+						ctx.fillRect(x, y, len, len);
+					}
+				ctx.fillStyle = change_color(color);
+				let pos = http_get(baseurl + '/target/' + log.lv);
+				x = pos.x * (len + off) + off;
+				y = pos.y * (len + off) + off;
+				ctx.fillRect(x, y, len, len);
+				log.len = len;
+			}
+
+			function get_flag() {
+				let ret;
+				let d = document.getElementById('level');
+				ret = http_post(baseurl + '/flag', game_log);
+				if (ret.cheat) {
+					d.innerHTML = `I said don't cheat.`
+				} else {
+					d.innerHTML = `Congratulations! The flag is CTF{${ret.flag}}`;
+				}
+			}
+
+			function fail() {
+				alert('Wrong! The game will not continue.');
+			}
+
+			function judge(pos) {
+				let ret;
+				let log = game_log.pop();
+				log.ts = Date.now();
+				log.x = pos.x;
+				log.y = pos.y;
+				ret = http_post(baseurl + '/judge', log);
+				game_log.push(log);
+				return ret === "success";
+			}
+
+			let lv = 0;
+			function next_level() {
+				if (++lv > 32) {
+					get_flag();
+					return;
+				}
+				let log = {};
+				set_level(lv, log);
+				let color = random_color();
+				fill(ctx, color, lv + 1, log);
+				game_log.push(log);
+			}
+
+			let canvas = document.getElementById("panel");
+			let ctx = canvas.getContext("2d");
+
+			canvas.onmouseup = (e) => {
+				let b = canvas.getBoundingClientRect();
+				if (judge({ x: e.clientX - b.left, y: e.clientY - b.top })) {
+					next_level();
+				} else {
+					fail();
+				}
+			}
+
+			(function () {
+				next_level();
+			})();
+		</script>
+		<style>
+			#content {
+				height: 800px;
+				width: 800px;
+				margin: 0 auto;
+				position: absolute;
+				margin: -400px 0 0 -400px;
+				left: 50%;
+				top: 50%;
+			}
+		</style>
+	</body>
+</html>
