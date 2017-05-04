@@ -81,8 +81,8 @@ Router.prototype.enter = async function(req, res) {
 }
 
 function allow_cors(req, res) {
-	//res.setHeader('Access-Control-Allow-Origin', 'http://localhost:8000');
-	res.setHeader('Access-Control-Allow-Origin', 'http://10.222.198.96:8000');
+	res.setHeader('Access-Control-Allow-Origin', 'http://localhost:8000');
+	//res.setHeader('Access-Control-Allow-Origin', 'http://10.222.198.96:8000');
 }
 
 async function target(lv) {
